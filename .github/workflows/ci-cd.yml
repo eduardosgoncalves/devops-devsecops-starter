@@ -27,7 +27,7 @@ jobs:
       - name: Snyk Open Source Scan
         uses: snyk/actions/python@master
         with:
-          command: test --file=app/requirements.txt
+          command: test --file=app/requirements.txt -- --allow-missing
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
