@@ -1,0 +1,40 @@
+name: Deploy to Azure AKS
+
+on:
+  push:
+    branches: [main]
+
+env:
+  ACR_NAME: devsecopsregistry
+  IMAGE_NAME: flask-app
+  CLUSTER_NAME: devsecops-aks
+  RESOURCE_GROUP: DevSecOps-RG
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Azure Container Registry Login
+        run: az acr login --name $ACR_NAME
+
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:latest .
+          docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:latest
+
+      - name: Get AKS credentials
+        run: az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --overwrite-existing
+
+      - name: Deploy to AKS
+        run: |
+          sed -i "s|image: .*|image: $ACR_NAME.azurecr.io/$IMAGE_NAME:latest|" kubernetes/deployment.yaml
+          kubectl apply -f kubernetes/deployment.yaml
+          kubectl apply -f kubernetes/service.yaml
